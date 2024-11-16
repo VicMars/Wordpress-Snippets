@@ -5,3 +5,5 @@
 
 2 - Basic Related Posts
 
+3 - Assign Number to CPT Post
+

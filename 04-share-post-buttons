@@ -1,0 +1,178 @@
+/*
+* Wordpress FSE
+* 04 - Display Share Post Buttons with a shortcode
+* List the Social icons you want to display with or withour labels
+*/
+<?php
+
+
+/* Create and link a folder for the SVG icons 
+ * ----------------------------------------------------------------- */
+function ndm_get_icon($icon_name) {
+    $icon_path = plugin_dir_path(__FILE__) . 'assets/icons/' . sanitize_file_name($icon_name) . '.svg';
+    if (file_exists($icon_path)) {
+        return file_get_contents($icon_path);
+    }
+    return '';
+}
+
+/* Shortcode to share post via the social icons
+ * ----------------------------------------------------------------- */
+function ndm_sharebuttons($atts) {
+    // Shortcode: [share_blog_post] : default shortcode displays all icons and labels
+                  [share_blog_post icons="facebook,twitter" label="no"] : displays the two icons without labels
+
+    global $post;
+
+    // Parse shortcode attributes
+    $shortcode_args = shortcode_atts(array(
+        'icons' => 'facebook,twitter,linkedin,pinterest,email,copy-link,print', // Default icons to display
+        'label'  => 'yes', // Display text labels by default
+    ), $atts);
+
+    // Convert the icons list into an array
+    $allowed_icons = explode(',', $shortcode_args['icons']);
+    $display_text = strtolower($shortcode_args['label']) === 'yes';
+
+    // Ensure we are on a singular post or content
+    if (!is_singular() || !is_single()) {
+        return ''; // Return empty if not a single post or singular content
+    }
+
+    // Get post data
+    $postURL = esc_url(get_permalink($post->ID));
+    $postTITLE = urlencode(html_entity_decode(get_the_title($post->ID), ENT_COMPAT, 'UTF-8'));
+    $siteTITLE = urlencode(get_bloginfo('name'));
+
+    // Define share URLs
+    $share_urls = array(
+        'facebook'  => "https://www.facebook.com/sharer/sharer.php?u={$postURL}",
+        'twitter'   => "https://twitter.com/intent/tweet/?text={$postTITLE}&url={$postURL}&via={$siteTITLE}",
+        'linkedin'  => "https://www.linkedin.com/shareArticle?mini=true&url={$postURL}&title={$postTITLE}",
+        'pinterest' => "https://pinterest.com/pin/create/button/?url={$postURL}&description={$postTITLE}",
+        'copy-link' => $postURL,
+        'print'     => "https://pinterest.com/pin/create/button/?url={$postURL}&description={$postTITLE}",
+        'email'     => "mailto:?subject=" . rawurlencode(__('Please visit this link:', 'ndm-essentials') . ' ' . get_the_title($post->ID)) .
+                        "&body=" . rawurlencode(__('Hello! I thought you would find this article interesting:', 'ndm-essentials') . ' ' . get_the_title($post->ID) . '. ' . __('Here is the website link:', 'ndm-essentials') . ' ' . get_permalink($post->ID)),
+    );
+
+    // Define icon mappings
+    $icon_classes = array(
+        'facebook'  => 'share-facebook-icon',
+        'twitter'   => 'share-twitter-icon',
+        'linkedin'  => 'share-linkedin-icon',
+        'pinterest' => 'share-pinterest-icon',
+        'email'     => 'share-email-icon',
+        'copy-link'      => 'share-link-icon',
+        'print'     => 'share-print-icon',
+    );
+
+    // Output
+    ob_start();
+    ?>
+    <div id="ndm_share_post">
+        <ul class="ndm-share-buttons">
+          <?php foreach ($allowed_icons as $icon): ?>
+              <?php if (isset($share_urls[$icon])): ?>
+                  <li>
+                      <?php if ($icon === 'copy-link'): ?>
+                         <a class="share-copy-link" href="javascript:void(0);" data-link="<?php echo $postURL; ?>" data-message="<?php echo esc_js(__('Copied!', 'text-domain')); ?>">
+                              <?php echo ndm_get_icon($icon_classes[$icon]); ?>
+                              <?php if ($display_text): ?>
+                                  <span><?php echo esc_html__('Copy link', 'text-domain'); ?></span>
+                              <?php endif; ?>
+                          </a>
+                      <?php elseif ($icon === 'print'): ?>
+                         <a class="share-print-page" href="javascript:void(0);">
+                              <?php echo ndm_get_icon($icon_classes[$icon]); ?>
+                              <?php if ($display_text): ?>
+                                  <span><?php echo esc_html__('Print', 'text-domain'); ?></span>
+                              <?php endif; ?>
+                          </a>
+                      <?php else: ?>
+                          <a class="share-<?php echo esc_attr($icon); ?>" href="<?php echo esc_url($share_urls[$icon]); ?>" target="_blank" rel="noopener noreferrer">
+                              <?php echo ndm_get_icon($icon_classes[$icon]); ?>
+                              <?php if ($display_text): ?>
+                                  <span><?php echo ucfirst(esc_html($icon)); ?></span>
+                              <?php endif; ?>
+                          </a>
+                      <?php endif; ?>
+                  </li>
+              <?php endif; ?>
+          <?php endforeach; ?>
+      </ul>
+
+    </div>
+    <?php
+    return ob_get_clean();
+}
+add_shortcode('share_blog_post', 'ndm_sharebuttons');
+
+?>
+
+
+
+/* SHORTCODE CSS
+ * ----------------------------------------------------------------- */
+ #ndm_share_post {
+   display:block;
+   width:fit-content;
+ }
+
+  #ndm_share_post ul {
+    display:flex;
+    justify-content:space-between;
+    width:fit-content;
+    margin:0;
+    padding:0;
+    gap:15px;
+    list-style: none;
+  }
+
+  #ndm_share_post ul li a {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-items:flex-end;
+    justify-content:flex-end;
+    font-size: 0.9rem;
+    margin:0;
+    text-decoration:none;
+  }
+
+  #ndm_share_post ul li a:hover {
+    opacity: 0.8;
+  }
+
+
+  #ndm_share_post svg {
+    height: 25px;
+  }
+
+
+/* Copy post link CSS
+ * ----------------------------------------------------------------- */
+.share-copy-link {
+   position: relative;
+}
+
+.copy-message {
+    position: fixed;
+    top: 50vh;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #ffffff;
+    color: #000000;
+    padding: 10px 20px;
+    font-size: 16px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    z-index: 9999;
+    opacity: 1;
+    transition: opacity 0.5s ease;
+}
+
+
+
+
+
+
